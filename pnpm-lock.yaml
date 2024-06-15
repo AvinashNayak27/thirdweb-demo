@@ -15,8 +15,8 @@ dependencies:
     specifier: ^18
     version: 18.3.1(react@18.3.1)
   thirdweb:
-    specifier: 0.0.0-dev-906c9785e323ac0b10f42d8888e28188f8e7353b-20240615094612
-    version: 0.0.0-dev-906c9785e323ac0b10f42d8888e28188f8e7353b-20240615094612(react-dom@18.3.1)(react@18.3.1)
+    specifier: 5.29.2
+    version: 5.29.2(react-dom@18.3.1)(react@18.3.1)
 
 devDependencies:
   postcss:
@@ -1571,7 +1571,7 @@ packages:
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
       tslib: 1.14.1
-      uint8arrays: 3.1.0
+      uint8arrays: 3.1.1
     dev: false
 
   /@walletconnect/safe-json@1.0.2:
@@ -4017,8 +4017,8 @@ packages:
       any-promise: 1.3.0
     dev: true
 
-  /thirdweb@0.0.0-dev-906c9785e323ac0b10f42d8888e28188f8e7353b-20240615094612(react-dom@18.3.1)(react@18.3.1):
-    resolution: {integrity: sha512-a9yrsl9UJOSFxe2Bm7E9tchelt3N5qtahAaeWxBvlnqB2QGiE9BsMThPTyYFiO2hlHVdtGQCtpN1k6P02DXtwQ==}
+  /thirdweb@5.29.2(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-romT7L86oMMGB3lssuDOCsFIKl5BPhpNL7CWj2hsvxiZezqpkbqJs1U57vbSOv2AaDRsOXGyB13FOjAKoxXm3g==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
