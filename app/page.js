@@ -3,13 +3,17 @@ import React, { useState, useEffect } from "react";
 import { createWallet, walletConnect } from "thirdweb/wallets";
 import { client } from "./provider";
 import { useDisconnect, useActiveWallet, ConnectButton } from "thirdweb/react";
-import { baseSepolia } from "thirdweb/chains";
+import { base } from "thirdweb/chains";
 import { getContract } from "thirdweb";
 import { prepareContractCall, resolveMethod } from "thirdweb";
 import { useCallsStatus, TransactionButton } from "thirdweb/react";
 
 const wallets = [
-  createWallet("com.coinbase.wallet"),
+  createWallet("com.coinbase.wallet",{
+    walletConfig:{
+      options: "smartWalletOnly"
+    }
+  }),
   createWallet("io.metamask"),
   createWallet("me.rainbow"),
   walletConnect(),
@@ -18,8 +22,8 @@ const wallets = [
 // connect to your contract
 const contract = getContract({
   client,
-  chain: baseSepolia,
-  address: "0xe9A518fEC8E3c756BC44B47351D5780C4b74f200",
+  chain: base,
+  address: "0x65aA38c6e3569D18bb1160Fa89a430A87AF74B6B",
 });
 
 export default function App() {
@@ -338,15 +342,17 @@ export default function App() {
         client={client}
         wallets={wallets}
         theme={"light"}
-        chain={baseSepolia}
+        chain={base}
       />
       {/* <button onClick={send}>Send</button> */}
       <div className="flex flex-col gap-4">
-      <TransactionButton
+        <TransactionButton
+          payModal={false}
           transaction={async () => {
             return prepareContractCall({
               contract,
-              method: "function mintNFT(address recipient, string svgName, string emotion)", 
+              method:
+                "function mintNFT(address recipient, string svgName, string emotion)",
               params: [recipient, svgName[0], svgName[0]],
             });
           }}
