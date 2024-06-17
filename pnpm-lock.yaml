@@ -15,8 +15,8 @@ dependencies:
     specifier: ^18
     version: 18.3.1(react@18.3.1)
   thirdweb:
-    specifier: 5.29.2
-    version: 5.29.2(react-dom@18.3.1)(react@18.3.1)
+    specifier: 5.29.3
+    version: 5.29.3(react-dom@18.3.1)(react@18.3.1)
 
 devDependencies:
   postcss:
@@ -1486,7 +1486,7 @@ packages:
       '@walletconnect/jsonrpc-utils': 1.0.8
       '@walletconnect/safe-json': 1.0.2
       events: 3.3.0
-      ws: 7.5.9
+      ws: 7.5.10
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -1571,7 +1571,7 @@ packages:
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
       tslib: 1.14.1
-      uint8arrays: 3.1.1
+      uint8arrays: 3.1.0
     dev: false
 
   /@walletconnect/safe-json@1.0.2:
@@ -2060,8 +2060,8 @@ packages:
     engines: {node: '>=6'}
     dev: false
 
-  /caniuse-lite@1.0.30001634:
-    resolution: {integrity: sha512-fbBYXQ9q3+yp1q1gBk86tOFs4pyn/yxFm5ZNP18OXJDfA3txImOY9PhfxVggZ4vRHDqoU8NrKU81eN0OtzOgRA==}
+  /caniuse-lite@1.0.30001636:
+    resolution: {integrity: sha512-bMg2vmr8XBsbL6Lr0UHXy/21m84FTxDLWn2FSqMd5PrlbMxwJlQnC2YWYxVgp66PZE+BBNF2jYQUBKCo1FDeZg==}
     dev: false
 
   /chalk@2.4.2:
@@ -3103,7 +3103,7 @@ packages:
       '@next/env': 14.2.4
       '@swc/helpers': 0.5.5
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001634
+      caniuse-lite: 1.0.30001636
       graceful-fs: 4.2.11
       postcss: 8.4.31
       react: 18.3.1
@@ -4017,8 +4017,8 @@ packages:
       any-promise: 1.3.0
     dev: true
 
-  /thirdweb@5.29.2(react-dom@18.3.1)(react@18.3.1):
-    resolution: {integrity: sha512-romT7L86oMMGB3lssuDOCsFIKl5BPhpNL7CWj2hsvxiZezqpkbqJs1U57vbSOv2AaDRsOXGyB13FOjAKoxXm3g==}
+  /thirdweb@5.29.3(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-7OspUXRJ5pYGxz759RldZkp0DxacLw+X1UDi8MbozGGL6TpTlfUa0JLkHlvgM7XyUcLALWGWZUAfDX1/GaH5UA==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -4423,8 +4423,8 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: false
 
-  /ws@7.5.9:
-    resolution: {integrity: sha512-F+P9Jil7UiSKSkppIiD94dN07AwvFixvLIj1Og1Rl9GGMuNipJnV9JzjD6XuqmAeiswGvUmNLjr5cFuXwNS77Q==}
+  /ws@7.5.10:
+    resolution: {integrity: sha512-+dbF1tHwZpXcbOJdVOkzLDxZP1ailvSxM6ZweXTegylPny803bFhA+vqBYw4s31NSAk4S2Qz+AKXK9a4wkdjcQ==}
     engines: {node: '>=8.3.0'}
     peerDependencies:
       bufferutil: ^4.0.1

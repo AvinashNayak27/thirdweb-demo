@@ -7,8 +7,6 @@ import { baseSepolia } from "thirdweb/chains";
 import { getContract } from "thirdweb";
 import { prepareContractCall, resolveMethod } from "thirdweb";
 import { useCallsStatus, TransactionButton } from "thirdweb/react";
-import { useSendCalls } from "thirdweb/react";
-import { useEstimateGas } from "thirdweb/react";
 
 const wallets = [
   createWallet("com.coinbase.wallet"),
@@ -333,13 +331,6 @@ export default function App() {
   ];
 
   const svgName = Names.concat(Names.slice(0, Names.length / 2)); // length 450
-  const { mutate: estimateGas, data: gasEstimate } = useEstimateGas();
-
-  useEffect(() => {
-    if (gasEstimate) {
-      console.log(gasEstimate);
-    }
-  }, [gasEstimate]);
 
   return (
     <>
@@ -351,15 +342,13 @@ export default function App() {
       />
       {/* <button onClick={send}>Send</button> */}
       <div className="flex flex-col gap-4">
-        <TransactionButton
+      <TransactionButton
           transaction={async () => {
-            const tx = prepareContractCall({
+            return prepareContractCall({
               contract,
-              method: resolveMethod("batchMintNFT"),
-              params: [recipient, svgName.length, svgName, svgName],
+              method: "function mintNFT(address recipient, string svgName, string emotion)", 
+              params: [recipient, svgName[0], svgName[0]],
             });
-            await estimateGas(tx);
-            return tx;
           }}
           onTransactionSent={(result) => {
             console.log("Transaction submitted", result.transactionHash);
@@ -376,7 +365,6 @@ export default function App() {
         >
           Confirm Transaction
         </TransactionButton>
-        {gasEstimate && <p>estimatedGas : {gasEstimate.toString()}</p>}
         {error && <div style={{ color: "red" }}>{error}</div>}
         {txHash && (
           <a
