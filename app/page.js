@@ -8,7 +8,6 @@ import { getContract, readContract, resolveMethod } from "thirdweb";
 import { prepareContractCall } from "thirdweb";
 import { LinkdropP2P } from "linkdrop-p2p-sdk";
 import axios from "axios";
-import { approve } from "thirdweb/extensions/erc721";
 import { decodeFunctionData } from "viem";
 import crypto from "crypto";
 import { sendCalls, getCallsStatus } from "thirdweb/wallets/eip5792";
@@ -550,7 +549,7 @@ const escrowContractABI = [
   },
 ];
 
-const baseUrl = "https://thirdweb-demo-liard.vercel.app/";
+const baseUrl = "https://adjusted-viper-helpful.ngrok-free.app";
 const ALCHEMY_API_KEY = "your-alchemy-api-key";
 
 const fetchNFTs = async (ownerAddress, contractAddress) => {
@@ -650,6 +649,7 @@ export default function App() {
     if (recipient) {
       fetchNFTs(recipient, contract.address).then((nfts) => {
         setUserNFTs(nfts);
+        console.log("NFTs:", nfts);
       });
     }
   }, [recipient]);
@@ -676,7 +676,7 @@ export default function App() {
     console.log("Result:", result);
   };
 
-  const giftViaCapabilites = async (index) => {
+  const batchedApproveDeposit = async (index) => {
     const from = wallet.getAccount().address;
     const token = "0xe5A16B87F8288119C32Be83545D81A72Eacdf389"; // Contract address of the NFT
     const tokenType = "ERC721";
@@ -690,44 +690,69 @@ export default function App() {
       tokenType,
       tokenId: index,
     });
+
     const escrowContract = getContract({
       client,
       chain: base,
       address: "0x648b9a6c54890a8fb17de128c6352f621154f358",
     });
 
+    const approvetx = prepareContractCall({
+      contract,
+      method: "function approve(address to, uint256 tokenId)",
+      params: [escrow, index],
+    });
+
+    const depositParams = await claimLink.getDepositParams();
+    console.log("Deposit Params:", depositParams);
+
+    const { args } = decodeFunctionData({
+      abi: escrowContractABI,
+      data: depositParams?.data,
+    });
+
+    console.log("Args:", args);
+
+    const depositTx = prepareContractCall({
+      contract: escrowContract,
+      method:
+        "function depositERC721(address token_, address transferId_, uint256 tokenId_, uint120 expiration_, uint128 feeAmount_, bytes feeAuthorization_) payable",
+      params: args,
+    });
+
+    const bundleId = await sendCalls({
+      client,
+      wallet,
+      calls: [approvetx, depositTx],
+      chain: base,
+    });
+
+    let result;
+    while (result?.status !== "CONFIRMED") {
+      result = await getCallsStatus({ wallet, client, bundleId });
+    }
+    console.log("Result:", result);
+    const txHash = result?.receipts[0]?.transactionHash;
+    return txHash;
+  };
+
+  const giftViaCapabilites = async (index, transactionHash) => {
+    const from = wallet.getAccount().address;
+    const token = "0xe5A16B87F8288119C32Be83545D81A72Eacdf389"; // Contract address of the NFT
+    const tokenType = "ERC721";
+    const chainId = 8453; // network chain ID
+    const claimLink = await sdk.createClaimLink({
+      from,
+      token,
+      chainId,
+      tokenType,
+      tokenId: index,
+    });
+
     const sendTx = async ({ to, value, data }) => {
-      const approveTx = approve({
-        contract: contract,
-        to: escrow,
-        tokenId: index,
-      });
-
-      const { args } = decodeFunctionData({
-        abi: escrowContractABI,
-        data: data,
-      });
-
-      const depositTx = prepareContractCall({
-        contract: escrowContract,
-        method:
-          "function depositERC721(address token_, address transferId_, uint256 tokenId_, uint120 expiration_, uint128 feeAmount_, bytes feeAuthorization_) payable",
-        params: args,
-      });
-
-      const bundleId = await sendCalls({
-        client,
-        wallet,
-        calls: [approveTx, depositTx],
-        chain: base,
-      });
-      let result;
-      while (result?.status !== "CONFIRMED") {
-        result = await getCallsStatus({ wallet, client, bundleId });
-      }
-      console.log("Result:", result);
-      const transactionHash = await result.receipts[0].transactionHash;
-      return { hash: transactionHash };
+      return {
+        hash: transactionHash,
+      };
     };
 
     const { claimUrl, transferId, txHash } = await claimLink.deposit({
@@ -735,9 +760,11 @@ export default function App() {
     });
 
     console.log(claimUrl, transferId, txHash);
-    const k = claimUrl.split("k=")[1].split("&")[0];
-    const finalClaimUrl = `https://thirdweb-demo-liard.vercel.app/?claim=${k}`;
-    alert(finalClaimUrl);
+  };
+
+  const gift = async (index) => {
+    const txHash = await batchedApproveDeposit(index);
+    const result = await giftViaCapabilites(index, txHash);
   };
 
   return (
@@ -775,17 +802,38 @@ export default function App() {
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
           justifyContent: "center",
           flexDirection: "row",
+          marginTop: "20px",
         }}
       >
         {userNFTs?.map((tokenId) => (
-          <DisplayNFT
+          <div
             key={tokenId}
-            index={tokenId}
-            handleClick={() => giftViaCapabilites(tokenId)}
-          />
+            style={{
+              border: "1px solid #ccc",
+              borderRadius: "8px",
+              padding: "16px",
+              marginBottom: "16px",
+              marginRight: "16px",
+            }}
+          >
+            <DisplayNFT index={tokenId} />
+            <button
+              style={{
+                marginTop: "8px",
+                padding: "8px 16px",
+                borderRadius: "4px",
+                background: "#007BFF",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+              }}
+              onClick={() => gift(tokenId)}
+            >
+              Gift
+            </button>
+          </div>
         ))}
       </div>
     </>
