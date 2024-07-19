@@ -11,6 +11,8 @@ import axios from "axios";
 import { decodeFunctionData } from "viem";
 import crypto from "crypto";
 import { sendCalls, getCallsStatus } from "thirdweb/wallets/eip5792";
+import { encodeBase58 } from "ethers";
+
 const escrowContractABI = [
   {
     inputs: [{ internalType: "address", name: "relayer_", type: "address" }],
@@ -550,7 +552,8 @@ const escrowContractABI = [
 ];
 
 const baseUrl = "https://adjusted-viper-helpful.ngrok-free.app";
-const ALCHEMY_API_KEY = "your-alchemy-api-key";
+const ALCHEMY_API_KEY = "alchemy-api-key";
+const linkdropApiKey = "linkdrop-api-key";
 
 const fetchNFTs = async (ownerAddress, contractAddress) => {
   let tokenIds = []; // List to store all token IDs
@@ -562,7 +565,7 @@ const fetchNFTs = async (ownerAddress, contractAddress) => {
           owner: ownerAddress,
           "contractAddresses[]": contractAddress,
           withMetadata: "false",
-          pageSize: "5",
+          pageSize: "20",
         },
         headers: { accept: "application/json" },
       }
@@ -588,7 +591,7 @@ const getRandomBytes = (length) => {
 export const sdk = new LinkdropP2P({
   baseUrl,
   getRandomBytes,
-  apiKey: "your-api-key",
+  apiKey: linkdropApiKey,
 });
 
 const wallets = [
@@ -608,8 +611,72 @@ const contract = getContract({
   address: "0xe5A16B87F8288119C32Be83545D81A72Eacdf389",
 });
 
-const DisplayNFT = ({ index, handleClick }) => {
+const encodeLink = (claimHost, link) => {
+  const linkKey = encodeBase58(link.linkKey);
+  const transferId = encodeBase58(link.transferId); // string -> hex -> base58 for shorter string
+
+  if (link.senderSig) {
+    const sig = encodeBase58(link.senderSig);
+    return `${claimHost}/#/code?k=${linkKey}&sg=${sig}&i=${transferId}&c=${link.chainId}&v=3&src=p2p`;
+  } else {
+    return `${claimHost}/#/code?k=${linkKey}&c=${link.chainId}&v=3&src=p2p`;
+  }
+};
+
+async function generateClaimUrl(linkKey, transferId, chainId, sender) {
+  const linkParams = {
+    linkKey,
+    transferId,
+    chainId,
+    sender,
+  };
+
+  const claimUrl = encodeLink(baseUrl, linkParams);
+  console.log(claimUrl);
+}
+
+const headers = {
+  authorization: `Bearer ${linkdropApiKey}`,
+};
+
+async function depositErc721(payload) {
+  try {
+    const response = await axios.post(
+      "https://escrow-api.linkdrop.io/v3/base/deposit-erc721",
+      payload,
+      { headers }
+    );
+    console.log(response.data);
+  } catch (error) {
+    console.error("There was an error!", error.response.data);
+  }
+}
+
+const DisplayNFT = ({ index }) => {
   const [decodedURI, setDecodedURI] = useState("");
+  const [claimLink, setClaimLink] = useState(null);
+  const wallet = useActiveWallet();
+
+  useEffect(() => {
+    const createClaimLink = async () => {
+      if (wallet) {
+        const from = wallet.getAccount().address;
+        const token = "0xe5A16B87F8288119C32Be83545D81A72Eacdf389"; // Contract address of the NFT
+        const tokenType = "ERC721";
+        const chainId = 8453; // network chain ID
+        const claimLink = await sdk.createClaimLink({
+          from,
+          token,
+          chainId,
+          tokenType,
+          tokenId: index,
+        });
+        setClaimLink(claimLink);
+      }
+    };
+
+    createClaimLink();
+  }, [wallet, sdk]);
 
   useEffect(() => {
     const fetchTokenURI = async () => {
@@ -625,6 +692,85 @@ const DisplayNFT = ({ index, handleClick }) => {
     fetchTokenURI();
   }, [index]);
 
+  const batchedApproveDeposit = async () => {
+    console.log("Batched Approve Deposit");
+    const escrow = "0x648b9a6c54890a8fb17de128c6352f621154f358";
+
+    const escrowContract = getContract({
+      client,
+      chain: base,
+      address: "0x648b9a6c54890a8fb17de128c6352f621154f358",
+    });
+
+    const approvetx = prepareContractCall({
+      contract,
+      method: "function approve(address to, uint256 tokenId)",
+      params: [escrow, index],
+    });
+
+    const depositParams = await claimLink.getDepositParams();
+    console.log("Deposit Params:", depositParams);
+
+    const { args } = decodeFunctionData({
+      abi: escrowContractABI,
+      data: depositParams?.data,
+    });
+
+    const depositTx = prepareContractCall({
+      contract: escrowContract,
+      method:
+        "function depositERC721(address token_, address transferId_, uint256 tokenId_, uint120 expiration_, uint128 feeAmount_, bytes feeAuthorization_) payable",
+      params: args,
+    });
+
+    const bundleId = await sendCalls({
+      client,
+      wallet,
+      calls: [approvetx, depositTx],
+      chain: base,
+    });
+
+    let result;
+    while (result?.status !== "CONFIRMED") {
+      result = await getCallsStatus({ wallet, client, bundleId });
+    }
+    console.log("Result:", result);
+    const txHash = result?.receipts[0]?.transactionHash;
+    return { args, txHash };
+  };
+
+  const giftViaCapabilites = async (index, transactionHash, args) => {
+    console.log(args, transactionHash);
+
+    const payload = {
+      sender: wallet.getAccount().address,
+      escrow: "0x648b9a6c54890a8fb17de128c6352f621154f358",
+      transfer_id: args[1],
+      token: "0xe5a16b87f8288119c32be83545d81a72eacdf389",
+      token_type: "ERC721",
+      expiration: args[3].toString(),
+      tx_hash: transactionHash,
+      fee_authorization: args[5],
+      token_id: index,
+      fee_amount: "0",
+      total_amount: "1",
+      fee_token: "0x0000000000000000000000000000000000000000",
+      amount: "1",
+    };
+    
+    await depositErc721(payload);
+    const linkKey = await claimLink.linkKey;
+    const transferId = args[1];
+    const sender = wallet.getAccount().address;
+    const chainId = 8453;
+    await generateClaimUrl(linkKey, transferId, chainId, sender);
+  };
+
+  const gift = async () => {
+    const { txHash, args } = await batchedApproveDeposit();
+    const result = await giftViaCapabilites(index, txHash, args);
+  };
+
   return (
     <div style={{ display: "inline-block", margin: "10px" }}>
       <img
@@ -633,8 +779,21 @@ const DisplayNFT = ({ index, handleClick }) => {
         style={{
           width: "80px",
         }}
-        onClick={handleClick}
       />
+      <button
+        style={{
+          marginTop: "8px",
+          padding: "8px 16px",
+          borderRadius: "4px",
+          background: "#007BFF",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={gift}
+      >
+        Gift
+      </button>
     </div>
   );
 };
@@ -642,14 +801,14 @@ const DisplayNFT = ({ index, handleClick }) => {
 export default function App() {
   const wallet = useActiveWallet();
   const recipient = wallet?.getAccount().address;
-
   const [userNFTs, setUserNFTs] = useState([]);
 
   useEffect(() => {
     if (recipient) {
       fetchNFTs(recipient, contract.address).then((nfts) => {
-        setUserNFTs(nfts);
-        console.log("NFTs:", nfts);
+        const last5 = nfts.slice(Math.max(nfts.length - 5, 0));
+        setUserNFTs(last5);
+        console.log("NFTs:", last5);
       });
     }
   }, [recipient]);
@@ -674,97 +833,6 @@ export default function App() {
       result = await getCallsStatus({ wallet, client, bundleId });
     }
     console.log("Result:", result);
-  };
-
-  const batchedApproveDeposit = async (index) => {
-    const from = wallet.getAccount().address;
-    const token = "0xe5A16B87F8288119C32Be83545D81A72Eacdf389"; // Contract address of the NFT
-    const tokenType = "ERC721";
-    const chainId = 8453; // network chain ID
-    const escrow = "0x648b9a6c54890a8fb17de128c6352f621154f358";
-
-    const claimLink = await sdk.createClaimLink({
-      from,
-      token,
-      chainId,
-      tokenType,
-      tokenId: index,
-    });
-
-    const escrowContract = getContract({
-      client,
-      chain: base,
-      address: "0x648b9a6c54890a8fb17de128c6352f621154f358",
-    });
-
-    const approvetx = prepareContractCall({
-      contract,
-      method: "function approve(address to, uint256 tokenId)",
-      params: [escrow, index],
-    });
-
-    const depositParams = await claimLink.getDepositParams();
-    console.log("Deposit Params:", depositParams);
-
-    const { args } = decodeFunctionData({
-      abi: escrowContractABI,
-      data: depositParams?.data,
-    });
-
-    console.log("Args:", args);
-
-    const depositTx = prepareContractCall({
-      contract: escrowContract,
-      method:
-        "function depositERC721(address token_, address transferId_, uint256 tokenId_, uint120 expiration_, uint128 feeAmount_, bytes feeAuthorization_) payable",
-      params: args,
-    });
-
-    const bundleId = await sendCalls({
-      client,
-      wallet,
-      calls: [approvetx, depositTx],
-      chain: base,
-    });
-
-    let result;
-    while (result?.status !== "CONFIRMED") {
-      result = await getCallsStatus({ wallet, client, bundleId });
-    }
-    console.log("Result:", result);
-    const txHash = result?.receipts[0]?.transactionHash;
-    return txHash;
-  };
-
-  const giftViaCapabilites = async (index, transactionHash) => {
-    const from = wallet.getAccount().address;
-    const token = "0xe5A16B87F8288119C32Be83545D81A72Eacdf389"; // Contract address of the NFT
-    const tokenType = "ERC721";
-    const chainId = 8453; // network chain ID
-    const claimLink = await sdk.createClaimLink({
-      from,
-      token,
-      chainId,
-      tokenType,
-      tokenId: index,
-    });
-
-    const sendTx = async ({ to, value, data }) => {
-      return {
-        hash: transactionHash,
-      };
-    };
-
-    const { claimUrl, transferId, txHash } = await claimLink.deposit({
-      sendTransaction: sendTx,
-    });
-
-    console.log(claimUrl, transferId, txHash);
-  };
-
-  const gift = async (index) => {
-    const txHash = await batchedApproveDeposit(index);
-    const result = await giftViaCapabilites(index, txHash);
   };
 
   return (
@@ -819,20 +887,6 @@ export default function App() {
             }}
           >
             <DisplayNFT index={tokenId} />
-            <button
-              style={{
-                marginTop: "8px",
-                padding: "8px 16px",
-                borderRadius: "4px",
-                background: "#007BFF",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-              }}
-              onClick={() => gift(tokenId)}
-            >
-              Gift
-            </button>
           </div>
         ))}
       </div>
